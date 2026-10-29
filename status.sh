@@ -22,23 +22,25 @@ COLOR_BORDER=$light_black
 COLOR_TITLE=$cyan
 COLOR_KEY=$blue
 COLOR_OUTPUT=$white
+COLOR_ERROR=$light_red
 BORDER_WIDTH=40
 
 if [[ -n ${NO_COLOR:-} || ( ! -t 1 && -z ${FORCE_COLOR:-} ) ]]; then
     RESET='' COLOR_BORDER='' COLOR_TITLE='' COLOR_KEY=''
-    COLOR_OUTPUT=''
+    COLOR_OUTPUT='' COLOR_ERROR=''
 fi
 
 section() {
-    local title=$1 key value
+    local title=$1 key value value_color
     shift
-    local -a keys=() values=()
+    local -a keys=() values=() value_colors=()
 
     while (($#)); do
-        key=$1 value=$2
+        key=$1 value=$2 value_color=$3
         keys+=("$key")
         values+=("$value")
-        shift 2
+        value_colors+=("$value_color")
+        shift 3
     done
 
     local padding
@@ -51,7 +53,7 @@ section() {
         printf '%b│%b ' "$COLOR_BORDER" "$RESET"
         printf '%b%-14s%b %b%s%b' \
             "$COLOR_KEY" "${keys[i]}:" "$RESET" \
-            "$COLOR_OUTPUT" "${values[i]}" "$RESET"
+            "${value_colors[i]}" "${values[i]}" "$RESET"
         printf '\n'
     done
 
@@ -106,35 +108,41 @@ public_ip=$(printf '%s\n' "$public_json" | sed -n 's/^[[:space:]]*"ip":[[:space:
 city=$(printf '%s\n' "$public_json" | sed -n 's/^[[:space:]]*"city":[[:space:]]*"\([^"]*\)".*/\1/p')
 country=$(printf '%s\n' "$public_json" | sed -n 's/^[[:space:]]*"country":[[:space:]]*"\([^"]*\)".*/\1/p')
 if [[ -n $public_ip ]]; then
-    public_ip="$public_ip${city:+ ($city${country:+, $country})}"
+    public_ip_color=$COLOR_OUTPUT
+    if [[ $public_ip =~ ^169\.254\.[0-9]{1,3}\.[0-9]{1,3}$ ]]; then
+        public_ip_color=$COLOR_ERROR
+    else
+        public_ip="$public_ip${city:+ ($city${country:+, $country})}"
+    fi
 else
-    public_ip='Unavailable'
+    public_ip='missing'
+    public_ip_color=$COLOR_ERROR
 fi
 
 hardware=(
-    Host "$host"
-    BIOS "$bios"
-    CPU "$cpu"
-    Memory "$memory"
-    Swap "$swap"
+    Host "$host" "$COLOR_OUTPUT"
+    BIOS "$bios" "$COLOR_OUTPUT"
+    CPU "$cpu" "$COLOR_OUTPUT"
+    Memory "$memory" "$COLOR_OUTPUT"
+    Swap "$swap" "$COLOR_OUTPUT"
 )
 
 while read -r filesystem type total used _; do
     [[ -n $filesystem && $filesystem != Filesystem ]] || continue
     [[ $filesystem == /dev/* && $type != efivarfs ]] || continue
     disk="$(bytes "$used") / $(bytes "$total") ($(percent "$used" "$total")%) - $type"
-    hardware+=(Disk "$disk")
+    hardware+=(Disk "$disk" "$COLOR_OUTPUT")
 done < <(df -PT -B1 -x tmpfs -x devtmpfs -x squashfs 2>/dev/null)
 section 'Hardware' "${hardware[@]}"
 
 section 'System' \
-    OS "$os" \
-    Kernel "$kernel" \
-    Uptime "$uptime"
+    OS "$os" "$COLOR_OUTPUT" \
+    Kernel "$kernel" "$COLOR_OUTPUT" \
+    Uptime "$uptime" "$COLOR_OUTPUT"
 
-network=('Local IP' "$local_ip")
-[[ -z $tailscale_ip ]] || network+=('Tailscale IP' "$tailscale_ip")
-network+=(DNS "$dns" 'Public IP' "$public_ip")
+network=('Local IP' "$local_ip" "$COLOR_OUTPUT")
+[[ -z $tailscale_ip ]] || network+=('Tailscale IP' "$tailscale_ip" "$COLOR_OUTPUT")
+network+=(DNS "$dns" 'Public IP' "$public_ip" "$public_ip_color")
 section 'Network' "${network[@]}"
 
 service_status() {
@@ -155,6 +163,8 @@ service_status() {
 services=()
 for service in ssh dnsmasq tailscaled; do
     state=$(service_status "$service")
-    services+=("$service" "$state")
+    state_color=$COLOR_ERROR
+    [[ $state == 'active (running)' ]] && state_color=$COLOR_OUTPUT
+    services+=("$service" "$state" "$state_color")
 done
 section 'Services' "${services[@]}"
