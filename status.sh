@@ -172,7 +172,7 @@ for service in sshd dnsmasq tailscaled; do
     state=$(service_status "$service")
     case $state in
         'active (running)') state_color=$COLOR_SUCCESS ;;
-        inactive|failed) state_color=$COLOR_ERROR ;;
+        inactive*|failed*) state_color=$COLOR_ERROR ;;
         *) state_color=$COLOR_WARNING ;;
     esac
     services+=("$service" "$state" "$state_color")
