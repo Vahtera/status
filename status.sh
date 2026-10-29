@@ -92,12 +92,16 @@ os=$(sed -n 's/^PRETTY_NAME="\(.*\)"/\1/p' /etc/os-release)
 kernel=$(uname -sr)
 uptime=$(uptime -p 2>/dev/null | sed -e 's/^up //' -e 's/minutes/mins/' -e 's/minute/min/')
 [[ -n $uptime ]] || uptime='Unavailable'
-local_ip=$(ip -o addr show scope global 2>/dev/null | awk '{ print $4 }' | paste -sd ' ')
+local_ip=$(ip -o -4 addr show scope global 2>/dev/null | awk '{ print $4 }' | paste -sd ' ')
 [[ -n $local_ip ]] || local_ip='Unavailable'
-dns=$(awk '$1 == "nameserver" { printf "%s%s", separator, $2; separator = " " }' /etc/resolv.conf)
+tailscale_ip=''
+if command -v tailscale >/dev/null 2>&1; then
+    tailscale_ip=$(tailscale ip -4 2>/dev/null | paste -sd ' ')
+fi
+dns=$(awk '$1 == "nameserver" && $2 ~ /^[0-9.]+$/ { printf "%s%s", separator, $2; separator = " " }' /etc/resolv.conf)
 [[ -n $dns ]] || dns='Unavailable'
 
-public_json=$(curl -fsS --max-time 3 https://ipinfo.io/json 2>/dev/null || true)
+public_json=$(curl -4fsS --max-time 3 https://ipinfo.io/json 2>/dev/null || true)
 public_ip=$(printf '%s\n' "$public_json" | sed -n 's/^[[:space:]]*"ip":[[:space:]]*"\([^"]*\)".*/\1/p')
 city=$(printf '%s\n' "$public_json" | sed -n 's/^[[:space:]]*"city":[[:space:]]*"\([^"]*\)".*/\1/p')
 country=$(printf '%s\n' "$public_json" | sed -n 's/^[[:space:]]*"country":[[:space:]]*"\([^"]*\)".*/\1/p')
@@ -128,10 +132,10 @@ section 'System' \
     Kernel "$kernel" \
     Uptime "$uptime"
 
-section 'Network' \
-    'Local IP' "$local_ip" \
-    DNS "$dns" \
-    'Public IP' "$public_ip"
+network=('Local IP' "$local_ip")
+[[ -z $tailscale_ip ]] || network+=('Tailscale IP' "$tailscale_ip")
+network+=(DNS "$dns" 'Public IP' "$public_ip")
+section 'Network' "${network[@]}"
 
 service_status() {
     local service=$1 state
