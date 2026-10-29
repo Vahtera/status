@@ -1,3 +1,3 @@
 #!/bin/bash
 
-FORCE_COLOR=1 watch -c ./status.sh
+FORCE_COLOR=1 watch -t -c ./status.sh
