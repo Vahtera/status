@@ -92,7 +92,7 @@ os=$(sed -n 's/^PRETTY_NAME="\(.*\)"/\1/p' /etc/os-release)
 kernel=$(uname -sr)
 uptime=$(uptime -p 2>/dev/null | sed -e 's/^up //' -e 's/minutes/mins/' -e 's/minute/min/')
 [[ -n $uptime ]] || uptime='Unavailable'
-local_ip=$(ip -o -4 addr show scope global 2>/dev/null | awk '{ print $4 }' | paste -sd ' ')
+local_ip=$(ip -o -4 addr show scope global 2>/dev/null | awk '$2 != "tailscale0" { print $4 }' | paste -sd ' ')
 [[ -n $local_ip ]] || local_ip='Unavailable'
 tailscale_ip=''
 if command -v tailscale >/dev/null 2>&1; then
