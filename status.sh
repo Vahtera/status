@@ -149,7 +149,7 @@ service_status() {
 }
 
 services=()
-for service in ssh dnsmasq tailscale; do
+for service in ssh dnsmasq tailscaled; do
     state=$(service_status "$service")
     services+=("$service" "$state")
 done
