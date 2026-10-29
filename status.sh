@@ -166,7 +166,7 @@ service_status() {
 }
 
 services=()
-for service in ssh dnsmasq tailscaled; do
+for service in sshd dnsmasq tailscaled; do
     state=$(service_status "$service")
     state_color=$COLOR_ERROR
     [[ $state == 'active (running)' ]] && state_color=$COLOR_OUTPUT
