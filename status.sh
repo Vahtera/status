@@ -24,7 +24,7 @@ COLOR_KEY=$blue
 COLOR_OUTPUT=$white
 BORDER_WIDTH=40
 
-if [[ ! -t 1 || -n ${NO_COLOR:-} ]]; then
+if [[ -n ${NO_COLOR:-} || ( ! -t 1 && -z ${FORCE_COLOR:-} ) ]]; then
     RESET='' COLOR_BORDER='' COLOR_TITLE='' COLOR_KEY=''
     COLOR_OUTPUT=''
 fi
