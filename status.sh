@@ -35,6 +35,11 @@ section() {
     shift
     local -a keys=() values=() value_colors=()
 
+    if (($# % 3 != 0)); then
+        printf 'section "%s": expected key/value/color arguments\n' "$title" >&2
+        return 2
+    fi
+
     while (($#)); do
         key=$1 value=$2 value_color=$3
         keys+=("$key")
@@ -142,7 +147,7 @@ section 'System' \
 
 network=('Local IP' "$local_ip" "$COLOR_OUTPUT")
 [[ -z $tailscale_ip ]] || network+=('Tailscale IP' "$tailscale_ip" "$COLOR_OUTPUT")
-network+=(DNS "$dns" 'Public IP' "$public_ip" "$public_ip_color")
+network+=(DNS "$dns" "$COLOR_OUTPUT" 'Public IP' "$public_ip" "$public_ip_color")
 section 'Network' "${network[@]}"
 
 service_status() {
