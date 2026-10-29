@@ -23,11 +23,13 @@ COLOR_TITLE=$cyan
 COLOR_KEY=$blue
 COLOR_OUTPUT=$white
 COLOR_ERROR=$light_red
+COLOR_SUCCESS=$light_green
+COLOR_WARNING=$yellow
 BORDER_WIDTH=40
 
 if [[ -n ${NO_COLOR:-} || ( ! -t 1 && -z ${FORCE_COLOR:-} ) ]]; then
     RESET='' COLOR_BORDER='' COLOR_TITLE='' COLOR_KEY=''
-    COLOR_OUTPUT='' COLOR_ERROR=''
+    COLOR_OUTPUT='' COLOR_ERROR='' COLOR_SUCCESS='' COLOR_WARNING=''
 fi
 
 section() {
@@ -168,8 +170,11 @@ service_status() {
 services=()
 for service in sshd dnsmasq tailscaled; do
     state=$(service_status "$service")
-    state_color=$COLOR_ERROR
-    [[ $state == 'active (running)' ]] && state_color=$COLOR_OUTPUT
+    case $state in
+        'active (running)') state_color=$COLOR_SUCCESS ;;
+        inactive|failed) state_color=$COLOR_ERROR ;;
+        *) state_color=$COLOR_WARNING ;;
+    esac
     services+=("$service" "$state" "$state_color")
 done
 section 'Services' "${services[@]}"
