@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# Color definitions
 RESET=$'\033[0m'
 black=$'\033[30m'
 red=$'\033[31m'
@@ -18,6 +19,7 @@ light_magenta=$'\033[95m'
 light_cyan=$'\033[96m'
 light_white=$'\033[97m'
 
+# Color configuration
 COLOR_BORDER=$light_black
 COLOR_TITLE=$cyan
 COLOR_KEY=$blue
@@ -27,11 +29,13 @@ COLOR_SUCCESS=$light_green
 COLOR_WARNING=$yellow
 BORDER_WIDTH=40
 
+# Disable colors if NO_COLOR is set or if stdout is not a terminal and FORCE_COLOR is not set
 if [[ -n ${NO_COLOR:-} || ( ! -t 1 && -z ${FORCE_COLOR:-} ) ]]; then
     RESET='' COLOR_BORDER='' COLOR_TITLE='' COLOR_KEY=''
     COLOR_OUTPUT='' COLOR_ERROR='' COLOR_SUCCESS='' COLOR_WARNING=''
 fi
 
+# Function to print a section with a title and key/value pairs
 section() {
     local title=$1 key value value_color
     shift
@@ -76,8 +80,16 @@ percent() {
     awk -v used="$1" -v total="$2" 'BEGIN { if (total) printf "%.0f", used * 100 / total; else print 0 }'
 }
 
+# Main script starts here
 host=$(hostname)
 bios=$(cat /sys/class/dmi/id/bios_version 2>/dev/null || tr -d '\000' < /proc/device-tree/model 2>/dev/null || printf 'Unavailable')
+board=$(cat /sys/class/dmi/id/board_name 2>/dev/null)
+board_version=$(cat /sys/class/dmi/id/board_version 2>/dev/null)
+if [[ -n $board ]]; then
+    board="$board${board_version:+ ($board_version)}"
+else
+    board='Unavailable'
+fi
 cpu=$(awk -F': *' '/^(model name|Hardware|Model)[[:space:]]*:/ { print $2; exit }' /proc/cpuinfo)
 [[ -n $cpu ]] || cpu=$(uname -m)
 cores=$(getconf _NPROCESSORS_ONLN 2>/dev/null || printf '?')
@@ -126,9 +138,11 @@ else
     public_ip_color=$COLOR_ERROR
 fi
 
+# Hardware information
 hardware=(
     Host "$host" "$COLOR_OUTPUT"
     BIOS "$bios" "$COLOR_OUTPUT"
+    Board "$board" "$COLOR_OUTPUT"
     CPU "$cpu" "$COLOR_OUTPUT"
     Memory "$memory" "$COLOR_OUTPUT"
     Swap "$swap" "$COLOR_OUTPUT"
@@ -140,6 +154,8 @@ while read -r filesystem type total used _; do
     disk="$(bytes "$used") / $(bytes "$total") ($(percent "$used" "$total")%) - $type"
     hardware+=(Disk "$disk" "$COLOR_OUTPUT")
 done < <(df -PT -B1 -x tmpfs -x devtmpfs -x squashfs 2>/dev/null)
+
+# Print sections
 section 'Hardware' "${hardware[@]}"
 
 section 'System' \
@@ -167,6 +183,7 @@ service_status() {
     printf '%s' "$state"
 }
 
+# Print service statuses
 services=()
 for service in sshd dnsmasq tailscaled; do
     state=$(service_status "$service")
